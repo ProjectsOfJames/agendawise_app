@@ -1,0 +1,7 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # Data access goes through DAOs, so the generated managers are not needed.
+          generate_manager: false
