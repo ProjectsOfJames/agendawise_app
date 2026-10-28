@@ -431,10 +431,10 @@ class _AgendaTile extends StatelessWidget {
       if (item.kind == AgendaKind.alarm) 'Alarm',
     ].join(' · ');
 
-    final String? route = switch (item.kind) {
+    final route = switch (item.kind) {
       AgendaKind.event => AppRoutes.event(item.id),
       AgendaKind.task => AppRoutes.task(item.id),
-      AgendaKind.alarm => null,
+      AgendaKind.alarm => AppRoutes.alarm(item.id),
     };
 
     final shape = RoundedRectangleBorder(
@@ -447,7 +447,7 @@ class _AgendaTile extends StatelessWidget {
       shape: shape,
       child: InkWell(
         customBorder: shape,
-        onTap: route == null ? null : () => context.push(route),
+        onTap: () => context.push(route),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Row(

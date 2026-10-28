@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/alarms/ui/alarm_form_screen.dart';
 import '../../features/alarms/ui/alarms_screen.dart';
 import '../../features/calendar/ui/calendar_screen.dart';
 import '../../features/calendar/ui/event_form_screen.dart';
@@ -22,6 +23,10 @@ abstract final class AppRoutes {
   static String task(String id) => '/task/$id';
 
   static String event(String id) => '/event/$id';
+
+  static const newAlarm = '/alarm/new';
+
+  static String alarm(String id) => '/alarm/$id';
 
   /// New event form with [day] preselected.
   static String newEvent(DateTime day) =>
@@ -97,6 +102,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
             EventFormScreen(eventId: state.pathParameters['id']),
+      ),
+      // Declared before '/alarm/:id' so "new" is not read as an id
+      GoRoute(
+        path: AppRoutes.newAlarm,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AlarmFormScreen(),
+      ),
+      GoRoute(
+        path: '/alarm/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            AlarmFormScreen(alarmId: state.pathParameters['id']),
       ),
       GoRoute(
         path: AppRoutes.categories,
