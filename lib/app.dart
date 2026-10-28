@@ -5,6 +5,7 @@ import 'core/platform/clock_format_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
+import 'features/alarms/ui/alarm_services_host.dart';
 
 class AgendaWiseApp extends ConsumerWidget {
   const AgendaWiseApp({super.key});
@@ -22,11 +23,12 @@ class AgendaWiseApp extends ConsumerWidget {
       routerConfig: ref.watch(appRouterProvider),
       // Applies the live device clock setting to every time shown in the app.
       builder: (context, child) {
-        final content = child ?? const SizedBox.shrink();
-        if (use24Hour == null) return content;
+        final media = MediaQuery.of(context);
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: use24Hour),
-          child: content,
+          data: media.copyWith(
+            alwaysUse24HourFormat: use24Hour ?? media.alwaysUse24HourFormat,
+          ),
+          child: AlarmServicesHost(child: child ?? const SizedBox.shrink()),
         );
       },
     );

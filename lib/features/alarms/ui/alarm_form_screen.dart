@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/domain/challenge_type.dart';
 import '../../../core/errors/validation_exception.dart';
+import '../../../core/platform/permission_gate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/clock.dart';
@@ -14,6 +15,7 @@ import '../../../shared/widgets/form_screen_scaffold.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../application/alarm_controller.dart';
 import '../data/alarm_repository.dart';
+import '../data/alarm_sound_store.dart';
 import '../domain/alarm_days.dart';
 import '../domain/alarm_rules.dart';
 import 'time_wheel.dart';
@@ -111,6 +113,7 @@ class _AlarmFormScreenState extends ConsumerState<AlarmFormScreen> {
       setState(() => _repeatDays ^= weekdayBit(weekday));
 
   Future<void> _pickSound() async {
+    const fromDevice = '__device__';
     final picked = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -127,11 +130,37 @@ class _AlarmFormScreenState extends ConsumerState<AlarmFormScreen> {
                     : null,
                 onTap: () => Navigator.pop(sheetContext, entry.key),
               ),
+            ListTile(
+              leading: const Icon(Icons.folder_open_outlined),
+              title: Text(AlarmSoundStore.isDeviceSound(_soundRef)
+                  ? AlarmSoundStore.displayName(_soundRef)
+                  : 'Choose from device'),
+              subtitle: AlarmSoundStore.isDeviceSound(_soundRef)
+                  ? const Text('Tap to choose another file')
+                  : null,
+              trailing: AlarmSoundStore.isDeviceSound(_soundRef)
+                  ? const Icon(Icons.check_rounded)
+                  : null,
+              onTap: () => Navigator.pop(sheetContext, fromDevice),
+            ),
           ],
         ),
       ),
     );
-    if (picked != null && mounted) setState(() => _soundRef = picked);
+    if (picked == null || !mounted) return;
+    if (picked != fromDevice) {
+      setState(() => _soundRef = picked);
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final chosen = await ref.read(alarmSoundStoreProvider).pickDeviceSound();
+      if (chosen != null && mounted) setState(() => _soundRef = chosen);
+    } on Object catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not use that file: $error')),
+      );
+    }
   }
 
   Future<void> _pickCustomSnooze() async {
@@ -149,10 +178,23 @@ class _AlarmFormScreenState extends ConsumerState<AlarmFormScreen> {
   }
 
   Future<void> _save() async {
+    final problem = validateAlarm(
+      hour: _hour,
+      minute: _minute,
+      snoozeMinutes: _snoozeMinutes,
+      snoozeLimit: _limitSnoozes ? _snoozeLimit : null,
+    );
+    if (problem != null) {
+      setState(() => _error = problem);
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
     });
+    final gate = ref.read(permissionGateProvider);
+    await gate.ensureForAlarms(context);
+    if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     final clock = ref.read(clockProvider);
     try {
@@ -179,6 +221,8 @@ class _AlarmFormScreenState extends ConsumerState<AlarmFormScreen> {
           ..showSnackBar(
               SnackBar(content: Text('Alarm set ${timeUntilLabel(until)}')));
       }
+      if (!mounted) return;
+      await gate.offerBatteryExemption(context);
       if (mounted) _close();
     } on ValidationException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -321,7 +365,7 @@ class _AlarmFormScreenState extends ConsumerState<AlarmFormScreen> {
         const SizedBox(height: 12),
         FormRowCard(
           label: 'Sound',
-          value: alarmTones[_soundRef] ?? 'Custom sound',
+          value: AlarmSoundStore.displayName(_soundRef),
           onTap: _pickSound,
           trailing: Icon(Icons.chevron_right_rounded, color: c.mutedForeground),
         ),

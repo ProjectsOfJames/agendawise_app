@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/alarms/ui/alarm_form_screen.dart';
+import '../../features/alarms/ui/alarm_ringing_screen.dart';
 import '../../features/alarms/ui/alarms_screen.dart';
 import '../../features/calendar/ui/calendar_screen.dart';
 import '../../features/calendar/ui/event_form_screen.dart';
@@ -27,6 +28,9 @@ abstract final class AppRoutes {
   static const newAlarm = '/alarm/new';
 
   static String alarm(String id) => '/alarm/$id';
+
+  static String ringing(String alarmId, int snoozesUsed) =>
+      '/ringing/$alarmId?snoozes=$snoozesUsed';
 
   /// New event form with [day] preselected.
   static String newEvent(DateTime day) =>
@@ -114,6 +118,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
             AlarmFormScreen(alarmId: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/ringing/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => AlarmRingingScreen(
+          alarmId: state.pathParameters['id']!,
+          snoozesUsed:
+              int.tryParse(state.uri.queryParameters['snoozes'] ?? '') ?? 0,
+        ),
       ),
       GoRoute(
         path: AppRoutes.categories,

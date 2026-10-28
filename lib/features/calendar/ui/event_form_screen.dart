@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/validation_exception.dart';
+import '../../../core/platform/permission_gate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/clock.dart';
@@ -176,6 +177,10 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
       _saving = true;
       _error = null;
     });
+    if (_reminder != null) {
+      await ref.read(permissionGateProvider).ensureForReminders(context);
+      if (!mounted) return;
+    }
     final unit = _repeatUnit;
     try {
       await ref.read(eventControllerProvider).save(

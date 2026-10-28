@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/daos/alarms_dao.dart';
+import '../../../core/platform/permission_gate.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -95,6 +96,7 @@ class _AlarmCard extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final controller = ref.read(alarmControllerProvider);
     final clock = ref.read(clockProvider);
+    if (on) await ref.read(permissionGateProvider).ensureForAlarms(context);
     final next = await controller.setActive(entry.alarm.id, on);
     if (next == null) return;
     final until = next.difference(clock());

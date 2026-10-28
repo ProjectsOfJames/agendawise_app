@@ -55,3 +55,8 @@ String timeUntilLabel(Duration until) {
   ];
   return 'in ${parts.join(' ')}';
 }
+
+/// Whether Snooze is offered after [used] snoozes in this ringing session.
+/// A null [limit] means unlimited snoozes.
+bool canSnooze({required int? limit, required int used}) =>
+    limit == null || used < limit;
