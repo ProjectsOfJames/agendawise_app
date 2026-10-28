@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/alarms/ui/alarms_screen.dart';
 import '../../features/calendar/ui/calendar_screen.dart';
+import '../../features/calendar/ui/event_form_screen.dart';
 import '../../features/categories/presentation/category_management_screen.dart';
 import '../../features/profile/ui/profile_screen.dart';
 import '../../features/tasks/presentation/task_detail_screen.dart';
@@ -19,6 +20,18 @@ abstract final class AppRoutes {
   static const categories = '/categories';
 
   static String task(String id) => '/task/$id';
+
+  static String event(String id) => '/event/$id';
+
+  /// New event form with [day] preselected.
+  static String newEvent(DateTime day) =>
+      '/event/new?date=${day.year}-${day.month}-${day.day}';
+}
+
+DateTime? _parseDay(String? text) {
+  final parts = text?.split('-').map(int.tryParse).toList();
+  if (parts == null || parts.length != 3 || parts.contains(null)) return null;
+  return DateTime(parts[0]!, parts[1]!, parts[2]!);
 }
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -70,6 +83,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
             TaskDetailScreen(taskId: state.pathParameters['id']),
+      ),
+      // Declared before '/event/:id' so "new" is not read as an id
+      GoRoute(
+        path: '/event/new',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => EventFormScreen(
+          initialDate: _parseDay(state.uri.queryParameters['date']),
+        ),
+      ),
+      GoRoute(
+        path: '/event/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            EventFormScreen(eventId: state.pathParameters['id']),
       ),
       GoRoute(
         path: AppRoutes.categories,
