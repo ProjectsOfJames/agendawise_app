@@ -28,6 +28,21 @@ class AlarmDisplay {
 
   Future<void> cancelLaunch(int id) => _call('cancelLaunch', {'id': id});
 
+  /// Current alarm volume step, or null when it cannot be read.
+  Future<int?> alarmVolumeLevel() async {
+    try {
+      final result =
+          await _channel.invokeMapMethod<String, int>('getAlarmVolume');
+      return result?['level'];
+    } on Object catch (error) {
+      debugPrint('getAlarmVolume failed: $error');
+      return null;
+    }
+  }
+
+  Future<void> setAlarmVolumeLevel(int level) =>
+      _call('setAlarmVolume', {'level': level});
+
   Future<void> _call(String method, [Map<String, Object>? arguments]) async {
     try {
       await _channel.invokeMethod<void>(method, arguments);

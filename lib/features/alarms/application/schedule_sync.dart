@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../calendar/application/reminder_scheduler.dart';
+import '../../challenges/application/challenge_volume.dart';
 import '../../calendar/data/event_repository.dart';
 import '../data/alarm_repository.dart';
 import 'alarm_scheduler.dart';
@@ -16,6 +17,7 @@ class ScheduleSync {
   final Ref _ref;
 
   Future<void> run() async {
+    await _ref.read(challengeVolumeProvider).restoreLeftover();
     await _syncAlarms();
     await _syncReminders();
   }

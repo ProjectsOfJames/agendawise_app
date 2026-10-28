@@ -8,6 +8,7 @@ import '../../features/alarms/ui/alarms_screen.dart';
 import '../../features/calendar/ui/calendar_screen.dart';
 import '../../features/calendar/ui/event_form_screen.dart';
 import '../../features/categories/presentation/category_management_screen.dart';
+import '../../features/challenges/ui/challenge_screen.dart';
 import '../../features/profile/ui/profile_screen.dart';
 import '../../features/tasks/presentation/task_detail_screen.dart';
 import '../../features/todo/ui/todo_screen.dart';
@@ -31,6 +32,8 @@ abstract final class AppRoutes {
 
   static String ringing(String alarmId, int snoozesUsed) =>
       '/ringing/$alarmId?snoozes=$snoozesUsed';
+
+  static String challenge(String alarmId) => '/challenge/$alarmId';
 
   /// New event form with [day] preselected.
   static String newEvent(DateTime day) =>
@@ -127,6 +130,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           snoozesUsed:
               int.tryParse(state.uri.queryParameters['snoozes'] ?? '') ?? 0,
         ),
+      ),
+      GoRoute(
+        path: '/challenge/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            ChallengeScreen(alarmId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: AppRoutes.categories,

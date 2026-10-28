@@ -1,6 +1,7 @@
 package com.production.agendawise
 
 import android.app.NotificationManager
+import android.media.AudioManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -43,6 +44,31 @@ class MainActivity : FlutterActivity() {
                             AlarmLauncher.schedule(applicationContext, id, at)
                             result.success(null)
                         }
+                    }
+                    "getAlarmVolume" -> {
+                        val audio = getSystemService(AudioManager::class.java)
+                        if (audio == null) {
+                            result.success(null)
+                        } else {
+                            result.success(
+                                mapOf(
+                                    "level" to audio.getStreamVolume(AudioManager.STREAM_ALARM),
+                                    "max" to audio.getStreamMaxVolume(AudioManager.STREAM_ALARM),
+                                ),
+                            )
+                        }
+                    }
+                    "setAlarmVolume" -> {
+                        val level = call.argument<Int>("level")
+                        val audio = getSystemService(AudioManager::class.java)
+                        if (level != null && audio != null) {
+                            try {
+                                audio.setStreamVolume(AudioManager.STREAM_ALARM, level, 0)
+                            } catch (error: SecurityException) {
+                                // Do Not Disturb can refuse volume changes.
+                            }
+                        }
+                        result.success(null)
                     }
                     "cancelLaunch" -> {
                         val id = call.argument<Int>("id")

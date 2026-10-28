@@ -32,6 +32,7 @@ class AlarmRingingScreen extends ConsumerStatefulWidget {
 
 class _AlarmRingingScreenState extends ConsumerState<AlarmRingingScreen> {
   Alarm? _alarm;
+  bool _hasChallenge = false;
   bool _loading = true;
   bool _busy = false;
 
@@ -46,6 +47,7 @@ class _AlarmRingingScreenState extends ConsumerState<AlarmRingingScreen> {
     if (!mounted) return;
     setState(() {
       _alarm = saved?.alarm;
+      _hasChallenge = saved?.challenge != null;
       _loading = false;
     });
   }
@@ -75,6 +77,11 @@ class _AlarmRingingScreenState extends ConsumerState<AlarmRingingScreen> {
   }
 
   Future<void> _stop() async {
+    if (_alarm != null && _hasChallenge) {
+      // The alarm keeps ringing until the challenge is solved.
+      context.pushReplacement(AppRoutes.challenge(widget.alarmId));
+      return;
+    }
     setState(() => _busy = true);
     final controller = ref.read(ringingControllerProvider);
     final alarm = _alarm;
