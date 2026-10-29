@@ -5,12 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/domain/task_priority.dart';
 import '../../../core/errors/validation_exception.dart';
+import '../../../core/platform/permission_gate.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/clock.dart';
 import '../../../core/utils/colour_hex.dart';
 import '../../../core/utils/date_labels.dart';
+import '../../../shared/widgets/form_row_card.dart';
 import '../../../shared/widgets/form_screen_scaffold.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../categories/application/category_providers.dart';
@@ -34,6 +36,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   TaskPriority _priority = TaskPriority.medium;
   DateTime? _dueAt;
   bool _isAllDay = false;
+  bool _linkedAlarm = false;
   String? _categoryId;
 
   bool _loading = true;
@@ -70,6 +73,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       _dueAt = task.dueAt;
       _isAllDay = task.isAllDay;
       _categoryId = task.categoryId;
+      _linkedAlarm = task.alarmId != null;
     });
   }
 
@@ -161,6 +165,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       return;
     }
     setState(() => _saving = true);
+    final withAlarm = _linkedAlarm && _canLinkAlarm;
+    if (withAlarm) {
+      await ref.read(permissionGateProvider).ensureForAlarms(context);
+      if (!mounted) return;
+    }
     try {
       await ref.read(taskControllerProvider).save(
             TaskForm(
@@ -170,6 +179,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               isAllDay: _isAllDay,
               categoryId: _categoryId,
               note: _noteController.text,
+              linkedAlarm: withAlarm,
             ),
             id: widget.taskId,
           );
@@ -365,9 +375,36 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 10),
+        FormRowCard(
+          label: 'Also create a linked alarm',
+          onTap: _canLinkAlarm
+              ? () => setState(() => _linkedAlarm = !_linkedAlarm)
+              : null,
+          trailing: Checkbox(
+            value: _linkedAlarm && _canLinkAlarm,
+            onChanged: _canLinkAlarm
+                ? (value) => setState(() => _linkedAlarm = value ?? false)
+                : null,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _dueAt == null
+              ? 'A due date creates a linked calendar event automatically.'
+              : _canLinkAlarm
+                  ? 'The due date adds this task to the calendar. A linked '
+                      'alarm rings at the due time.'
+                  : 'The due date adds this task to the calendar. Pick a due '
+                      'time to add a linked alarm.',
+          style: TextStyle(fontSize: 12, color: c.mutedForeground),
+        ),
       ],
     );
   }
+
+  /// A linked alarm needs a due date with a time.
+  bool get _canLinkAlarm => _dueAt != null && !_isAllDay;
 }
 
 class _CategoryChoice {

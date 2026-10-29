@@ -128,7 +128,10 @@ class _AlarmCard extends ConsumerWidget {
 
     final timeColour = active ? c.foreground : c.mutedForeground;
     final details = [
-      if (alarm.repeatDays == 0) 'Once',
+      if (alarm.repeatDays == 0)
+        alarm.ringOn == null
+            ? 'Once'
+            : MaterialLocalizations.of(context).formatMediumDate(alarm.ringOn!),
       if (entry.challenge != null) challengeName(entry.challenge!.challengeType),
       if (alarm.snoozeLimit != null)
         '${alarm.snoozeLimit} ${alarm.snoozeLimit == 1 ? 'snooze' : 'snoozes'}',

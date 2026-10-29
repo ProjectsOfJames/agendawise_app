@@ -1069,6 +1069,15 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
     clientDefault: () => true,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> ringOn =
+      GeneratedColumn<int>(
+        'ring_on',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($AlarmsTable.$converterringOnn);
+  @override
   late final GeneratedColumnWithTypeConverter<DateTime, int> createdAt =
       GeneratedColumn<int>(
         'created_at',
@@ -1098,6 +1107,7 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
     soundRef,
     vibrate,
     isActive,
+    ringOn,
     createdAt,
     updatedAt,
   ];
@@ -1231,6 +1241,12 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
       )!,
+      ringOn: $AlarmsTable.$converterringOnn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}ring_on'],
+        ),
+      ),
       createdAt: $AlarmsTable.$convertercreatedAt.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.int,
@@ -1251,6 +1267,10 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
     return $AlarmsTable(attachedDatabase, alias);
   }
 
+  static TypeConverter<DateTime, int> $converterringOn =
+      const EpochMsConverter();
+  static TypeConverter<DateTime?, int?> $converterringOnn =
+      NullAwareTypeConverter.wrap($converterringOn);
   static TypeConverter<DateTime, int> $convertercreatedAt =
       const EpochMsConverter();
   static TypeConverter<DateTime, int> $converterupdatedAt =
@@ -1268,6 +1288,10 @@ class Alarm extends DataClass implements Insertable<Alarm> {
   final String soundRef;
   final bool vibrate;
   final bool isActive;
+
+  /// Date of a one-off alarm tied to a specific day (for example a task's
+  /// linked alarm). Null for alarms that ring at the next matching time.
+  final DateTime? ringOn;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Alarm({
@@ -1281,6 +1305,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
     required this.soundRef,
     required this.vibrate,
     required this.isActive,
+    this.ringOn,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1301,6 +1326,11 @@ class Alarm extends DataClass implements Insertable<Alarm> {
     map['sound_ref'] = Variable<String>(soundRef);
     map['vibrate'] = Variable<bool>(vibrate);
     map['is_active'] = Variable<bool>(isActive);
+    if (!nullToAbsent || ringOn != null) {
+      map['ring_on'] = Variable<int>(
+        $AlarmsTable.$converterringOnn.toSql(ringOn),
+      );
+    }
     {
       map['created_at'] = Variable<int>(
         $AlarmsTable.$convertercreatedAt.toSql(createdAt),
@@ -1330,6 +1360,9 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       soundRef: Value(soundRef),
       vibrate: Value(vibrate),
       isActive: Value(isActive),
+      ringOn: ringOn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ringOn),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1351,6 +1384,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       soundRef: serializer.fromJson<String>(json['soundRef']),
       vibrate: serializer.fromJson<bool>(json['vibrate']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      ringOn: serializer.fromJson<DateTime?>(json['ringOn']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1369,6 +1403,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       'soundRef': serializer.toJson<String>(soundRef),
       'vibrate': serializer.toJson<bool>(vibrate),
       'isActive': serializer.toJson<bool>(isActive),
+      'ringOn': serializer.toJson<DateTime?>(ringOn),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1385,6 +1420,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
     String? soundRef,
     bool? vibrate,
     bool? isActive,
+    Value<DateTime?> ringOn = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Alarm(
@@ -1398,6 +1434,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
     soundRef: soundRef ?? this.soundRef,
     vibrate: vibrate ?? this.vibrate,
     isActive: isActive ?? this.isActive,
+    ringOn: ringOn.present ? ringOn.value : this.ringOn,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1419,6 +1456,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       soundRef: data.soundRef.present ? data.soundRef.value : this.soundRef,
       vibrate: data.vibrate.present ? data.vibrate.value : this.vibrate,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      ringOn: data.ringOn.present ? data.ringOn.value : this.ringOn,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1437,6 +1475,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           ..write('soundRef: $soundRef, ')
           ..write('vibrate: $vibrate, ')
           ..write('isActive: $isActive, ')
+          ..write('ringOn: $ringOn, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1455,6 +1494,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
     soundRef,
     vibrate,
     isActive,
+    ringOn,
     createdAt,
     updatedAt,
   );
@@ -1472,6 +1512,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           other.soundRef == this.soundRef &&
           other.vibrate == this.vibrate &&
           other.isActive == this.isActive &&
+          other.ringOn == this.ringOn &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1487,6 +1528,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
   final Value<String> soundRef;
   final Value<bool> vibrate;
   final Value<bool> isActive;
+  final Value<DateTime?> ringOn;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1501,6 +1543,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     this.soundRef = const Value.absent(),
     this.vibrate = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.ringOn = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1516,6 +1559,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     this.soundRef = const Value.absent(),
     this.vibrate = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.ringOn = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -1535,6 +1579,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     Expression<String>? soundRef,
     Expression<bool>? vibrate,
     Expression<bool>? isActive,
+    Expression<int>? ringOn,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
@@ -1550,6 +1595,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       if (soundRef != null) 'sound_ref': soundRef,
       if (vibrate != null) 'vibrate': vibrate,
       if (isActive != null) 'is_active': isActive,
+      if (ringOn != null) 'ring_on': ringOn,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1567,6 +1613,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     Value<String>? soundRef,
     Value<bool>? vibrate,
     Value<bool>? isActive,
+    Value<DateTime?>? ringOn,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1582,6 +1629,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       soundRef: soundRef ?? this.soundRef,
       vibrate: vibrate ?? this.vibrate,
       isActive: isActive ?? this.isActive,
+      ringOn: ringOn ?? this.ringOn,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1621,6 +1669,11 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (ringOn.present) {
+      map['ring_on'] = Variable<int>(
+        $AlarmsTable.$converterringOnn.toSql(ringOn.value),
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(
         $AlarmsTable.$convertercreatedAt.toSql(createdAt.value),
@@ -1650,6 +1703,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
           ..write('soundRef: $soundRef, ')
           ..write('vibrate: $vibrate, ')
           ..write('isActive: $isActive, ')
+          ..write('ringOn: $ringOn, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')

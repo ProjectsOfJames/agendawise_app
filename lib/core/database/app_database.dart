@@ -57,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.device() : super(driftDatabase(name: 'agendawise'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -65,6 +65,11 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
           for (final statement in _indexStatements) {
             await customStatement(statement);
+          }
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(alarms, alarms.ringOn);
           }
         },
         beforeOpen: (details) async {

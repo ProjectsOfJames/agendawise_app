@@ -24,6 +24,7 @@ class AlarmDraft {
     this.vibrate = true,
     this.isActive = true,
     this.challengeType,
+    this.ringOn,
   });
 
   final int hour;
@@ -42,6 +43,15 @@ class AlarmDraft {
 
   /// Null means no challenge.
   final ChallengeType? challengeType;
+
+  /// Fixed date for a one-off alarm; ignored when [repeatDays] is set.
+  final DateTime? ringOn;
+
+  DateTime? get _storedRingOn {
+    final date = ringOn;
+    if (repeatDays != 0 || date == null) return null;
+    return DateTime(date.year, date.month, date.day);
+  }
 }
 
 class AlarmRepository {
@@ -75,6 +85,7 @@ class AlarmRepository {
         soundRef: Value(draft.soundRef),
         vibrate: Value(draft.vibrate),
         isActive: Value(draft.isActive),
+        ringOn: Value(draft._storedRingOn),
         createdAt: now,
         updatedAt: now,
       ),
@@ -97,6 +108,7 @@ class AlarmRepository {
             soundRef: Value(draft.soundRef),
             vibrate: Value(draft.vibrate),
             isActive: Value(draft.isActive),
+            ringOn: Value(draft._storedRingOn),
             updatedAt: Value(_clock()),
           ),
         );

@@ -10,6 +10,12 @@ bool repeatsOnWeekday(int repeatDays, int weekday) =>
 /// Next time the alarm rings strictly after [now], or null if inactive.
 DateTime? nextAlarmTrigger(Alarm alarm, DateTime now) {
   if (!alarm.isActive) return null;
+  final ringOn = alarm.ringOn;
+  if (alarm.repeatDays == 0 && ringOn != null) {
+    final at = DateTime(
+        ringOn.year, ringOn.month, ringOn.day, alarm.hour, alarm.minute);
+    return at.isAfter(now) ? at : null;
+  }
   for (var offset = 0; offset <= 7; offset++) {
     final day = dateOnly(now).add(Duration(days: offset));
     final candidate =
@@ -23,7 +29,8 @@ DateTime? nextAlarmTrigger(Alarm alarm, DateTime now) {
 }
 
 /// Whether an active alarm rings on [day]. Repeating alarms ring on their
-/// weekdays from today on; a one-off alarm rings only on its next trigger day.
+/// weekdays from today on; a one-off alarm rings only on its next trigger
+/// day (its fixed date, when it has one).
 bool alarmRingsOn(Alarm alarm, DateTime day, DateTime now) {
   if (!alarm.isActive) return false;
   final target = dateOnly(day);

@@ -54,6 +54,7 @@ class _AlarmFormScreenState extends ConsumerState<AlarmFormScreen> {
   int _snoozeLimit = 3;
   ChallengeType? _challenge;
   bool _isActive = true;
+  DateTime? _ringOn;
 
   bool _loading = true;
   bool _missing = false;
@@ -98,6 +99,7 @@ class _AlarmFormScreenState extends ConsumerState<AlarmFormScreen> {
       _snoozeLimit = alarm.snoozeLimit ?? 3;
       _challenge = saved.challenge?.challengeType;
       _isActive = alarm.isActive;
+      _ringOn = alarm.ringOn;
     });
   }
 
@@ -211,6 +213,7 @@ class _AlarmFormScreenState extends ConsumerState<AlarmFormScreen> {
               // Saving an alarm switches it on.
               isActive: true,
               challengeType: _challenge,
+              ringOn: _ringOn,
             ),
             id: widget.alarmId,
           );
@@ -357,9 +360,12 @@ class _AlarmFormScreenState extends ConsumerState<AlarmFormScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          _repeatDays == 0
-              ? 'No days selected: rings once.'
-              : 'Repeats on the selected days.',
+          _repeatDays != 0
+              ? 'Repeats on the selected days.'
+              : _ringOn != null
+                  ? 'Rings once on '
+                      '${MaterialLocalizations.of(context).formatMediumDate(_ringOn!)}.'
+                  : 'No days selected: rings once.',
           style: TextStyle(fontSize: 12, color: c.mutedForeground),
         ),
         const SizedBox(height: 12),

@@ -2,14 +2,13 @@ import 'package:agendawise/core/database/app_database.dart';
 import 'package:agendawise/core/domain/interaction_event_type.dart';
 import 'package:agendawise/core/domain/task_priority.dart';
 import 'package:agendawise/core/errors/validation_exception.dart';
-import 'package:agendawise/core/utils/id_generator.dart';
 import 'package:agendawise/features/difficulty/data/interaction_log_repository.dart';
-import 'package:agendawise/features/difficulty/data/interaction_logger.dart';
 import 'package:agendawise/features/tasks/application/task_controller.dart';
 import 'package:agendawise/features/tasks/data/task_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/test_database.dart';
+import '../helpers/test_services.dart';
 
 void main() {
   late AppDatabase db;
@@ -20,12 +19,9 @@ void main() {
   setUp(() {
     db = openTestDatabase();
     final clock = SteppingClock();
-    const ids = IdGenerator();
-    tasks = TaskRepository(db.tasksDao, db.notesDao, ids, clock.call);
-    controller = TaskController(
-      tasks,
-      InteractionLogger(db.interactionLogsDao, ids, clock.call),
-    );
+    final services = TestServices(db, clock.call);
+    tasks = services.tasks;
+    controller = TaskController(tasks, services.integration);
     logs = InteractionLogRepository(db.interactionLogsDao);
   });
   tearDown(() => db.close());

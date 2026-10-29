@@ -69,6 +69,10 @@ class Alarms extends Table {
   BoolColumn get isActive => boolean()
       .customConstraint('NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))')
       .clientDefault(() => true)();
+
+  /// Date of a one-off alarm tied to a specific day (for example a task's
+  /// linked alarm). Null for alarms that ring at the next matching time.
+  IntColumn get ringOn => integer().nullable().map(const EpochMsConverter())();
   IntColumn get createdAt => integer().map(const EpochMsConverter())();
   IntColumn get updatedAt => integer().map(const EpochMsConverter())();
 

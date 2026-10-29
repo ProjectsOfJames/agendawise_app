@@ -37,8 +37,8 @@ class AgendaItem {
 
 /// Builds the items shown on each day of a month.
 ///
-/// Automatic events are left out because the calendar shows a linked record
-/// only through its source task.
+/// Automatic events and task-linked alarms are left out because the calendar
+/// shows a linked record only through its source task.
 class CalendarAgenda {
   CalendarAgenda._(this._days);
 
@@ -52,6 +52,10 @@ class CalendarAgenda {
     final first = DateTime(month.year, month.month);
     final dayCount = DateTime(month.year, month.month + 1, 0).day;
     final days = <DateTime, List<AgendaItem>>{};
+    // Alarms linked to a task are shown through the task.
+    final linkedAlarmIds = <String>{
+      for (final task in tasks) ?task.alarmId,
+    };
 
     void add(DateTime day, AgendaItem item) =>
         days.putIfAbsent(dateOnly(day), () => []).add(item);
@@ -106,6 +110,7 @@ class CalendarAgenda {
       }
 
       for (final alarm in alarms) {
+        if (linkedAlarmIds.contains(alarm.id)) continue;
         if (!alarmRingsOn(alarm, day, now)) continue;
         add(
           day,
