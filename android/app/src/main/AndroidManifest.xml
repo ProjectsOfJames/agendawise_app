@@ -15,6 +15,9 @@
     <!-- Opening the ringing screen while the phone is unlocked and in use -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Online accounts (Firebase) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Ringing alarm notification and event reminders -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

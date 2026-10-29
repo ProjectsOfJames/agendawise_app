@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/account/ui/create_account_screen.dart';
+import '../../features/account/ui/edit_account_screens.dart';
+import '../../features/account/ui/forgot_password_screen.dart';
+import '../../features/account/ui/privacy_notice_screen.dart';
+import '../../features/account/ui/sign_in_screen.dart';
 import '../../features/alarms/ui/alarm_form_screen.dart';
 import '../../features/alarms/ui/alarm_ringing_screen.dart';
 import '../../features/alarms/ui/alarms_screen.dart';
@@ -34,6 +39,14 @@ abstract final class AppRoutes {
       '/ringing/$alarmId?snoozes=$snoozesUsed';
 
   static String challenge(String alarmId) => '/challenge/$alarmId';
+
+  static const signIn = '/account/sign-in';
+  static const createAccount = '/account/create';
+  static const forgotPassword = '/account/forgot-password';
+  static const editName = '/account/name';
+  static const editEmail = '/account/email';
+  static const changePassword = '/account/password';
+  static const privacyNotice = '/privacy';
 
   /// New event form with [day] preselected.
   static String newEvent(DateTime day) =>
@@ -136,6 +149,41 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
             ChallengeScreen(alarmId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.signIn,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SignInScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.createAccount,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const CreateAccountScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.editName,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const EditNameScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.editEmail,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const EditEmailScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.changePassword,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.privacyNotice,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const PrivacyNoticeScreen(),
       ),
       GoRoute(
         path: AppRoutes.categories,

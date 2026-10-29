@@ -1,23 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/database/app_database.dart';
-import '../../settings/data/settings_repository.dart';
-import '../data/user_repository.dart';
+import '../data/account_service.dart';
+import '../domain/account.dart';
 
-final _signedInIdProvider = StreamProvider<String?>(
-  (ref) => ref
-      .watch(settingsRepositoryProvider)
-      .watchString(SettingsKeys.signedInUserId),
+final _accountStreamProvider = StreamProvider<Account?>(
+  (ref) => ref.watch(accountServiceProvider).watch(),
 );
 
-final _storedAccountProvider = StreamProvider<User?>(
-  (ref) => ref.watch(userRepositoryProvider).watchAccount(),
+/// The signed-in online account, or null when signed out.
+final currentAccountProvider = Provider<Account?>(
+  (ref) => ref.watch(_accountStreamProvider).asData?.value,
 );
 
-/// The local account when it exists and is signed in; null otherwise.
-final currentAccountProvider = Provider<User?>((ref) {
-  final signedInId = ref.watch(_signedInIdProvider).asData?.value;
-  final account = ref.watch(_storedAccountProvider).asData?.value;
-  if (account == null || signedInId != account.id) return null;
-  return account;
+/// Whether the signed-in user shares anonymous usage events.
+final usageOptInProvider = FutureProvider.autoDispose<bool>((ref) {
+  ref.watch(currentAccountProvider);
+  return ref.watch(accountServiceProvider).usageOptIn();
 });

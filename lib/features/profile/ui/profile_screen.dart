@@ -1,15 +1,21 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/database/app_database.dart';
 import '../../../core/platform/alarm_reliability.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_mode_provider.dart';
 import '../../../shared/widgets/circle_icon_button.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../account/application/account_providers.dart';
+import '../../account/data/account_service.dart';
+import '../../account/data/avatar_store.dart';
+import '../../account/domain/account.dart';
+import '../../account/ui/account_widgets.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -36,14 +42,70 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.dispose();
   }
 
-  void _notAvailableYet(String what) {
+  void _show(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('$what is not available yet.')));
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _notAvailableYet(String what) => _show('$what is not available yet.');
+
+  Future<void> _changePicture(Account account) async {
+    try {
+      final path = await ref
+          .read(avatarStoreProvider)
+          .pick(uid: account.uid, replacing: account.imagePath);
+      if (path == null) return;
+      await ref.read(accountServiceProvider).setProfilePicture(path);
+    } on Object catch (error) {
+      if (mounted) _show('Could not use that picture: $error');
+    }
+  }
+
+  Future<void> _signOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text(
+            'Your tasks, events and alarms stay on this device.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(accountServiceProvider).signOut();
+    if (mounted) _show('Signed out.');
+  }
+
+  Future<void> _deleteAccount() async {
+    final deleted = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _DeleteAccountDialog(),
+    );
+    if (deleted == true && mounted) _show('Your account has been deleted.');
+  }
+
+  Future<void> _setUsage(bool value) async {
+    try {
+      await ref.read(accountServiceProvider).setUsageOptIn(value);
+      ref.invalidate(usageOptInProvider);
+    } on AccountException catch (e) {
+      if (mounted) _show(e.message);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final account = ref.watch(currentAccountProvider);
     final signedIn = account != null;
     final isLight = ref.watch(themeModeProvider) != ThemeMode.dark;
@@ -62,7 +124,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            _Identity(account: account),
+            _Identity(
+              account: account,
+              onChangePicture:
+                  account == null ? null : () => _changePicture(account),
+            ),
             const SizedBox(height: 20),
             if (account != null) ...[
               const SectionLabel('Account info'),
@@ -71,23 +137,55 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _SettingRow(
                   icon: Icons.person_outline_rounded,
                   caption: 'Full name',
-                  title: account.fullName,
+                  title: account.displayName,
                   showChevron: true,
-                  onTap: () => _notAvailableYet('Editing your name'),
+                  onTap: () => context.push(AppRoutes.editName),
                 ),
                 _SettingRow(
                   icon: Icons.mail_outline_rounded,
                   caption: 'Email',
                   title: account.email,
                   showChevron: true,
-                  onTap: () => _notAvailableYet('Editing your email'),
+                  onTap: () => context.push(AppRoutes.editEmail),
                 ),
                 _SettingRow(
                   icon: Icons.lock_outline_rounded,
                   caption: 'Password',
                   title: '••••••••',
                   showChevron: true,
-                  onTap: () => _notAvailableYet('Changing your password'),
+                  onTap: () => context.push(AppRoutes.changePassword),
+                ),
+              ]),
+              const SizedBox(height: 20),
+              const SectionLabel('Privacy'),
+              const SizedBox(height: 10),
+              _GroupCard(children: [
+                _SettingRow(
+                  icon: Icons.insights_outlined,
+                  title: 'Share anonymous usage',
+                  subtitle: 'Which features are used, never their content',
+                  trailing: Switch(
+                    value: ref.watch(usageOptInProvider).asData?.value ?? false,
+                    onChanged: _setUsage,
+                  ),
+                ),
+                _SettingRow(
+                  icon: Icons.policy_outlined,
+                  title: 'Privacy notice',
+                  showChevron: true,
+                  onTap: () => context.push(AppRoutes.privacyNotice),
+                ),
+                _SettingRow(
+                  icon: Icons.logout_rounded,
+                  title: 'Sign out',
+                  onTap: _signOut,
+                ),
+                _SettingRow(
+                  icon: Icons.delete_outline_rounded,
+                  iconTint: c.destructive,
+                  title: 'Delete account',
+                  subtitle: 'Removes your online account and activity log',
+                  onTap: _deleteAccount,
                 ),
               ]),
             ] else ...[
@@ -96,7 +194,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               SizedBox(
                 height: 52,
                 child: FilledButton(
-                  onPressed: () => _notAvailableYet('Signing in'),
+                  onPressed: () => context.push(AppRoutes.signIn),
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.card),
@@ -139,7 +237,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _GroupCard(children: [
               _SettingRow(
                 icon: Icons.file_upload_outlined,
-                iconTint: AppColors.of(context).success,
+                iconTint: c.success,
                 title: 'Import data',
                 subtitle: signedIn
                     ? 'Restore from a backup file'
@@ -161,12 +259,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ]),
             const SizedBox(height: 24),
             Text(
-              'Everything is stored on this device only.',
+              'Your tasks, events and alarms are stored on this device only.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.of(context).mutedForeground,
-              ),
+              style: TextStyle(fontSize: 12, color: c.mutedForeground),
             ),
           ],
         ),
@@ -175,10 +270,95 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-class _Identity extends StatelessWidget {
-  const _Identity({required this.account});
+class _DeleteAccountDialog extends ConsumerStatefulWidget {
+  const _DeleteAccountDialog();
 
-  final User? account;
+  @override
+  ConsumerState<_DeleteAccountDialog> createState() =>
+      _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
+  final _password = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _delete() async {
+    if (_password.text.isEmpty) {
+      setState(() => _error = 'Enter your password');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(accountServiceProvider)
+          .deleteAccount(password: _password.text);
+      if (mounted) Navigator.pop(context, true);
+    } on AccountException catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = e.message;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return AlertDialog(
+      title: const Text('Delete account?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'This deletes your online account and your activity log. Only '
+            'anonymous monthly totals are kept. Your tasks, events and alarms '
+            'stay on this device. This cannot be undone.',
+          ),
+          const SizedBox(height: 12),
+          PasswordField(
+            controller: _password,
+            hint: 'Password',
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _delete(),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            FormMessage(_error!),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _busy ? null : _delete,
+          child: Text('Delete', style: TextStyle(color: c.destructive)),
+        ),
+      ],
+    );
+  }
+}
+
+class _Identity extends StatelessWidget {
+  const _Identity({required this.account, this.onChangePicture});
+
+  final Account? account;
+  final VoidCallback? onChangePicture;
 
   static String _initials(String name) {
     final parts =
@@ -193,14 +373,17 @@ class _Identity extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final user = account;
+    final picture = user?.imagePath;
+    final hasPicture = picture != null && File(picture).existsSync();
 
     final avatar = Container(
       width: 88,
       height: 88,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: user == null ? c.muted : null,
-        gradient: user == null
+        gradient: user == null || hasPicture
             ? null
             : LinearGradient(
                 begin: Alignment.topLeft,
@@ -214,25 +397,55 @@ class _Identity extends StatelessWidget {
       alignment: Alignment.center,
       child: user == null
           ? Icon(Icons.person_outline_rounded, size: 44, color: c.mutedForeground)
-          : Text(
-              _initials(user.fullName),
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w700,
-                color: c.primaryForeground,
-              ),
-            ),
+          : hasPicture
+              ? Image.file(File(picture), fit: BoxFit.cover, width: 88, height: 88)
+              : Text(
+                  _initials(user.displayName),
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: c.primaryForeground,
+                  ),
+                ),
     );
 
     return Column(
       children: [
-        Semantics(
-          label: user == null ? 'No profile picture' : 'Profile picture',
-          child: avatar,
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Semantics(
+              label: user == null ? 'No profile picture' : 'Profile picture',
+              child: avatar,
+            ),
+            if (onChangePicture != null)
+              Positioned(
+                right: -4,
+                bottom: -4,
+                child: Semantics(
+                  button: true,
+                  label: 'Change profile picture',
+                  child: Material(
+                    color: c.primary,
+                    shape: CircleBorder(side: BorderSide(color: c.card, width: 2)),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: onChangePicture,
+                      child: SizedBox(
+                        width: 34,
+                        height: 34,
+                        child: Icon(Icons.photo_camera_outlined,
+                            size: 18, color: c.primaryForeground),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 12),
         Text(
-          user?.fullName ?? 'Not signed in',
+          user?.displayName ?? 'Not signed in',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,

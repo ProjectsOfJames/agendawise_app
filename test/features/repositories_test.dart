@@ -264,23 +264,25 @@ void main() {
   });
 
   group('UserRepository', () {
-    test('only one account can exist', () async {
-      final users = UserRepository(db.usersDao, ids, clock.call);
-      await users.create(
-        fullName: 'Thandi',
-        email: 'thandi@example.com',
-        passwordHash: 'h',
-        salt: 's',
-      );
-      await expectLater(
-        users.create(
-          fullName: 'Other',
-          email: 'other@example.com',
-          passwordHash: 'h',
-          salt: 's',
-        ),
-        invalid,
-      );
+    test('caches one profile and replaces it for another account', () async {
+      final users = UserRepository(db.usersDao, clock.call);
+      await users.cacheProfile(
+          uid: 'a', fullName: 'Thandi', email: 'thandi@example.com');
+      await users.updateImagePath('a', '/pics/a.jpg');
+
+      await users.cacheProfile(
+          uid: 'a', fullName: 'Thandi N', email: 'thandi@example.com');
+      var cached = (await users.getCached())!;
+      expect(cached.fullName, 'Thandi N');
+      expect(cached.imagePath, '/pics/a.jpg');
+      expect(cached.passwordHash, isEmpty);
+
+      await users.cacheProfile(
+          uid: 'b', fullName: 'Sipho', email: 'sipho@example.com');
+      cached = (await users.getCached())!;
+      expect(cached.id, 'b');
+      expect(cached.imagePath, isNull);
+      expect(await db.select(db.users).get(), hasLength(1));
     });
   });
 }
