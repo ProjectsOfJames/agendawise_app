@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/cloud/activity_actions.dart';
+import '../../../core/cloud/activity_logger.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/errors/validation_exception.dart';
 import '../../settings/data/settings_repository.dart';
@@ -79,11 +81,17 @@ class EventForm {
 
 /// Calendar event use cases.
 class EventController {
-  EventController(this._events, this._settings, this._reminders);
+  EventController(
+    this._events,
+    this._settings,
+    this._reminders, {
+    ActivityLogger activity = const NoopActivityLogger(),
+  }) : _activity = activity;
 
   final EventRepository _events;
   final SettingsRepository _settings;
   final ReminderScheduler _reminders;
+  final ActivityLogger _activity;
 
   Future<CalendarEvent?> load(String id) => _events.getById(id);
 
@@ -92,6 +100,13 @@ class EventController {
     final draft = form.toDraft();
     final eventId = id ?? await _events.create(draft);
     if (id != null) await _events.update(id, draft);
+    if (id == null) {
+      _activity.log(ActivityAction.eventCreated, meta: {
+        'allDay': form.isAllDay,
+        'repeats': form.repeat != null,
+        'reminder': form.reminderMinutesBefore != null,
+      });
+    }
 
     final saved = await _events.getById(eventId);
     if (saved != null && saved.reminderMinutesBefore != null) {
@@ -131,5 +146,6 @@ final eventControllerProvider = Provider<EventController>(
     ref.watch(eventRepositoryProvider),
     ref.watch(settingsRepositoryProvider),
     ref.watch(reminderSchedulerProvider),
+    activity: ref.watch(activityLoggerProvider),
   ),
 );

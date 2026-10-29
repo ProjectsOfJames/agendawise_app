@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/cloud/activity_actions.dart';
+import '../../../core/cloud/activity_logger.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/daos/alarms_dao.dart';
 import '../../../core/domain/challenge_type.dart';
@@ -18,7 +20,9 @@ class ChallengeController {
     required InteractionLogRepository logs,
     required RingingController ringing,
     DifficultyAdjuster adjuster = const DifficultyAdjuster(),
-  })  : _alarms = alarms,
+    ActivityLogger activity = const NoopActivityLogger(),
+  })  : _activity = activity,
+        _alarms = alarms,
         _logger = logger,
         _logs = logs,
         _ringing = ringing,
@@ -29,6 +33,7 @@ class ChallengeController {
   final InteractionLogRepository _logs;
   final RingingController _ringing;
   final DifficultyAdjuster _adjuster;
+  final ActivityLogger _activity;
 
   Future<AlarmWithChallenge?> load(String alarmId) => _alarms.getById(alarmId);
 
@@ -72,6 +77,13 @@ class ChallengeController {
     if (challenge != null && challenge.challengeType == type) {
       await _alarms.setChallengeDifficulty(alarm.id, next);
     }
+    _activity.log(ActivityAction.challengeCompleted, meta: {
+      'type': type.dbValue,
+      'difficulty': level,
+      'success': true,
+      // Rounded to 5 seconds so timings cannot single anyone out.
+      'seconds': (duration.inSeconds / 5).round() * 5,
+    });
     await _ringing.dismiss(alarm);
     return next;
   }
@@ -83,5 +95,6 @@ final challengeControllerProvider = Provider<ChallengeController>(
     logger: ref.watch(interactionLoggerProvider),
     logs: ref.watch(interactionLogRepositoryProvider),
     ringing: ref.watch(ringingControllerProvider),
+    activity: ref.watch(activityLoggerProvider),
   ),
 );

@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/cloud/activity_actions.dart';
+import '../../../core/cloud/activity_logger.dart';
 import '../../../core/cloud/firebase_setup.dart';
 import '../../../core/utils/clock.dart';
 import '../../settings/data/settings_repository.dart';
@@ -120,17 +122,20 @@ class FirebaseAccountService implements AccountService {
     required UserRepository cache,
     required SettingsRepository settings,
     required Clock clock,
+    ActivityLogger activity = const NoopActivityLogger(),
     fb.FirebaseAuth? auth,
     FirebaseFirestore? firestore,
   })  : _cache = cache,
         _settings = settings,
         _clock = clock,
+        _activity = activity,
         _auth = auth ?? fb.FirebaseAuth.instance,
         _db = firestore ?? FirebaseFirestore.instance;
 
   final UserRepository _cache;
   final SettingsRepository _settings;
   final Clock _clock;
+  final ActivityLogger _activity;
   final fb.FirebaseAuth _auth;
   final FirebaseFirestore _db;
 
@@ -211,6 +216,12 @@ class FirebaseAccountService implements AccountService {
     await _cache.cacheProfile(uid: user.uid, fullName: name, email: email);
     await _settings.setString(_lastActiveKey, dayStamp(_clock()));
     await user.reload();
+    await _activity.refreshOptIn();
+    _activity.log(ActivityAction.accountCreated);
+    _activity.log(
+      ActivityAction.consentAccepted,
+      meta: {'version': privacyNoticeVersion, 'usageOptIn': request.usageOptIn},
+    );
   }
 
   @override
@@ -220,15 +231,24 @@ class FirebaseAccountService implements AccountService {
           password: password,
         ));
     await _settings.remove(_lastActiveKey);
+    await _activity.refreshOptIn();
+    _activity.log(ActivityAction.signIn);
     unawaited(recordActive());
   }
 
   @override
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() async {
+    await _activity.logAndWait(ActivityAction.signOut);
+    await _auth.signOut();
+    await _activity.refreshOptIn();
+  }
 
   @override
-  Future<void> sendPasswordReset(String email) =>
-      _guard(() => _auth.sendPasswordResetEmail(email: email.trim()));
+  Future<void> sendPasswordReset(String email) async {
+    await _guard(() => _auth.sendPasswordResetEmail(email: email.trim()));
+    // Only recorded when requested while signed in.
+    _activity.log(ActivityAction.passwordResetRequested);
+  }
 
   @override
   Future<void> updateDisplayName(String name) async {
@@ -251,6 +271,7 @@ class FirebaseAccountService implements AccountService {
   }) async {
     final user = await _reauthenticate(password);
     await _guard(() => user.verifyBeforeUpdateEmail(newEmail.trim()));
+    _activity.log(ActivityAction.emailChanged, meta: {'stage': 'requested'});
   }
 
   @override
@@ -260,6 +281,7 @@ class FirebaseAccountService implements AccountService {
   }) async {
     final user = await _reauthenticate(currentPassword);
     await _guard(() => user.updatePassword(newPassword));
+    _activity.log(ActivityAction.passwordChanged);
   }
 
   @override
@@ -350,6 +372,7 @@ class FirebaseAccountService implements AccountService {
           'analyticsOptIn': value,
           'emailLower': ?user.email?.toLowerCase(),
         }));
+    await _activity.refreshOptIn();
   }
 
   @override
@@ -374,6 +397,22 @@ class FirebaseAccountService implements AccountService {
       await _settings.setString(_lastActiveKey, today);
     } on Object catch (error) {
       debugPrint('Could not record activity: $error');
+      return;
+    }
+    await _touchSuperadmin(user.uid);
+  }
+
+  /// Keeps the superadmin's last active time fresh, which decides when
+  /// another admin may claim the role. Other users cannot read the record,
+  /// so the denied read is expected and ignored.
+  Future<void> _touchSuperadmin(String uid) async {
+    try {
+      final config = _db.collection('config').doc('superadmin');
+      final snapshot = await config.get();
+      if (snapshot.data()?['uid'] != uid) return;
+      await config.update({'lastActiveAt': FieldValue.serverTimestamp()});
+    } on FirebaseException {
+      // Not an admin.
     }
   }
 
@@ -416,5 +455,6 @@ final accountServiceProvider = Provider<AccountService>((ref) {
     cache: ref.watch(userRepositoryProvider),
     settings: ref.watch(settingsRepositoryProvider),
     clock: ref.watch(clockProvider),
+    activity: ref.watch(activityLoggerProvider),
   );
 });

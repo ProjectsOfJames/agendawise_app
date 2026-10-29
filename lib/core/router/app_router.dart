@@ -7,6 +7,9 @@ import '../../features/account/ui/edit_account_screens.dart';
 import '../../features/account/ui/forgot_password_screen.dart';
 import '../../features/account/ui/privacy_notice_screen.dart';
 import '../../features/account/ui/sign_in_screen.dart';
+import '../../features/admin/domain/admin_models.dart';
+import '../../features/admin/ui/log_viewer_screen.dart';
+import '../../features/admin/ui/manage_admins_screen.dart';
 import '../../features/alarms/ui/alarm_form_screen.dart';
 import '../../features/alarms/ui/alarm_ringing_screen.dart';
 import '../../features/alarms/ui/alarms_screen.dart';
@@ -18,6 +21,7 @@ import '../../features/profile/ui/profile_screen.dart';
 import '../../features/tasks/presentation/task_detail_screen.dart';
 import '../../features/todo/ui/todo_screen.dart';
 import '../../shared/widgets/app_shell.dart';
+import '../cloud/activity_actions.dart';
 
 abstract final class AppRoutes {
   static const calendar = '/calendar';
@@ -47,6 +51,17 @@ abstract final class AppRoutes {
   static const editEmail = '/account/email';
   static const changePassword = '/account/password';
   static const privacyNotice = '/privacy';
+  static const manageAdmins = '/admin/manage';
+  static const myActivity = '/activity';
+
+  /// Admin log viewer, optionally opened with a date range and one action.
+  static String adminLogs({DatePreset? preset, ActivityAction? action}) {
+    final query = [
+      if (preset != null) 'preset=${preset.name}',
+      if (action != null) 'action=${action.wire}',
+    ].join('&');
+    return query.isEmpty ? '/admin/logs' : '/admin/logs?$query';
+  }
 
   /// New event form with [day] preselected.
   static String newEvent(DateTime day) =>
@@ -57,6 +72,17 @@ DateTime? _parseDay(String? text) {
   final parts = text?.split('-').map(int.tryParse).toList();
   if (parts == null || parts.length != 3 || parts.contains(null)) return null;
   return DateTime(parts[0]!, parts[1]!, parts[2]!);
+}
+
+LogFilter _filterFrom(Map<String, String> query) {
+  final preset = DatePreset.values
+      .where((p) => p.name == query['preset'])
+      .firstOrNull;
+  final action = ActivityAction.fromWire(query['action']);
+  return LogFilter(
+    datePreset: preset ?? DatePreset.last7Days,
+    actions: {?action},
+  );
 }
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -184,6 +210,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.privacyNotice,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const PrivacyNoticeScreen(),
+      ),
+      GoRoute(
+        path: '/admin/logs',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            LogViewerScreen(initial: _filterFrom(state.uri.queryParameters)),
+      ),
+      GoRoute(
+        path: AppRoutes.manageAdmins,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ManageAdminsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.myActivity,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const LogViewerScreen(
+          initial: LogFilter(datePreset: DatePreset.last30Days),
+          ownOnly: true,
+        ),
       ),
       GoRoute(
         path: AppRoutes.categories,

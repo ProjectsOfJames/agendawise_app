@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/cloud/activity_actions.dart';
+import '../../../core/cloud/activity_logger.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/daos/alarms_dao.dart';
 import '../../difficulty/data/interaction_logger.dart';
@@ -16,13 +18,15 @@ class RingingController {
     this._alarms,
     this._scheduler,
     this._playback,
-    this._logger,
-  );
+    this._logger, {
+    ActivityLogger activity = const NoopActivityLogger(),
+  }) : _activity = activity;
 
   final AlarmRepository _alarms;
   final AlarmScheduler _scheduler;
   final AlarmPlayback _playback;
   final InteractionLogger _logger;
+  final ActivityLogger _activity;
 
   Future<AlarmWithChallenge?> load(String alarmId) => _alarms.getById(alarmId);
 
@@ -35,6 +39,7 @@ class RingingController {
       delay: Duration(minutes: alarm.snoozeMinutes),
     );
     await _logger.alarmSnoozed(alarm.id);
+    _activity.log(ActivityAction.alarmSnoozed, meta: {'count': snoozesUsed + 1});
     return true;
   }
 
@@ -43,6 +48,7 @@ class RingingController {
   Future<void> dismiss(Alarm alarm) async {
     await _playback.stop(alarm.id);
     await _logger.alarmDismissed(alarm.id);
+    _activity.log(ActivityAction.alarmDismissed);
     if (alarm.repeatDays != 0) {
       await _scheduler.schedule(alarm);
     } else {
@@ -60,5 +66,6 @@ final ringingControllerProvider = Provider<RingingController>(
     ref.watch(alarmSchedulerProvider),
     ref.watch(alarmPlaybackProvider),
     ref.watch(interactionLoggerProvider),
+    activity: ref.watch(activityLoggerProvider),
   ),
 );

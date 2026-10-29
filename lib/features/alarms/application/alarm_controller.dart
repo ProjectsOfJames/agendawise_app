@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/cloud/activity_actions.dart';
+import '../../../core/cloud/activity_logger.dart';
 import '../../../core/database/daos/alarms_dao.dart';
 import '../../../core/errors/validation_exception.dart';
 import '../../../core/utils/clock.dart';
@@ -14,11 +16,17 @@ final alarmsListProvider = StreamProvider<List<AlarmWithChallenge>>(
 
 /// Alarm use cases for the alarm screens.
 class AlarmController {
-  AlarmController(this._alarms, this._scheduler, this._clock);
+  AlarmController(
+    this._alarms,
+    this._scheduler,
+    this._clock, {
+    ActivityLogger activity = const NoopActivityLogger(),
+  }) : _activity = activity;
 
   final AlarmRepository _alarms;
   final AlarmScheduler _scheduler;
   final Clock _clock;
+  final ActivityLogger _activity;
 
   Future<AlarmWithChallenge?> load(String id) => _alarms.getById(id);
 
@@ -35,6 +43,12 @@ class AlarmController {
 
     final alarmId = id ?? await _alarms.create(draft);
     if (id != null) await _alarms.update(id, draft);
+    if (id == null) {
+      _activity.log(ActivityAction.alarmCreated, meta: {
+        'repeats': draft.repeatDays != 0,
+        'challenge': draft.challengeType?.dbValue ?? 'none',
+      });
+    }
     return _reschedule(alarmId);
   }
 
@@ -66,5 +80,6 @@ final alarmControllerProvider = Provider<AlarmController>(
     ref.watch(alarmRepositoryProvider),
     ref.watch(alarmSchedulerProvider),
     ref.watch(clockProvider),
+    activity: ref.watch(activityLoggerProvider),
   ),
 );

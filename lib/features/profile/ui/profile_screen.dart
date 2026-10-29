@@ -16,6 +16,7 @@ import '../../account/data/account_service.dart';
 import '../../account/data/avatar_store.dart';
 import '../../account/domain/account.dart';
 import '../../account/ui/account_widgets.dart';
+import '../../admin/ui/admin_card.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -170,6 +171,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
                 _SettingRow(
+                  icon: Icons.history_rounded,
+                  title: 'My activity',
+                  subtitle: 'What your account has recorded online',
+                  showChevron: true,
+                  onTap: () => context.push(AppRoutes.myActivity),
+                ),
+                _SettingRow(
                   icon: Icons.policy_outlined,
                   title: 'Privacy notice',
                   showChevron: true,
@@ -188,6 +196,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   onTap: _deleteAccount,
                 ),
               ]),
+              const AdminCard(),
             ] else ...[
               const SectionLabel('Account'),
               const SizedBox(height: 10),
