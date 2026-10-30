@@ -17,6 +17,8 @@ import '../../account/data/avatar_store.dart';
 import '../../account/domain/account.dart';
 import '../../account/ui/account_widgets.dart';
 import '../../admin/ui/admin_card.dart';
+import '../../backup/application/backup_service.dart';
+import '../../backup/domain/backup_format.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -49,7 +51,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _notAvailableYet(String what) => _show('$what is not available yet.');
+  bool _backupBusy = false;
+
+  Future<void> _exportData() async {
+    setState(() => _backupBusy = true);
+    try {
+      final saved = await ref.read(backupServiceProvider).export();
+      if (saved && mounted) _show('Backup saved.');
+    } on BackupException catch (e) {
+      if (mounted) _show(e.message);
+    } finally {
+      if (mounted) setState(() => _backupBusy = false);
+    }
+  }
+
+  Future<void> _importData() async {
+    final service = ref.read(backupServiceProvider);
+    final PickedBackup? picked;
+    try {
+      picked = await service.pick();
+    } on BackupException catch (e) {
+      if (mounted) _show(e.message);
+      return;
+    }
+    if (picked == null || !mounted) return;
+    final chosen = picked;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ImportConfirmDialog(picked: chosen),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _backupBusy = true);
+    try {
+      await service.restore(chosen.contents);
+      if (mounted) _show('Your data has been restored.');
+    } on BackupException catch (e) {
+      if (mounted) _show(e.message);
+    } finally {
+      if (mounted) setState(() => _backupBusy = false);
+    }
+  }
 
   Future<void> _changePicture(Account account) async {
     try {
@@ -251,9 +294,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 subtitle: signedIn
                     ? 'Restore from a backup file'
                     : 'Sign in to restore a backup',
-                enabled: signedIn,
+                enabled: signedIn && !_backupBusy,
                 showChevron: true,
-                onTap: () => _notAvailableYet('Importing data'),
+                onTap: _importData,
               ),
               _SettingRow(
                 icon: Icons.file_download_outlined,
@@ -261,9 +304,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 subtitle: signedIn
                     ? 'Save a backup of all your data'
                     : 'Sign in to save a backup',
-                enabled: signedIn,
+                enabled: signedIn && !_backupBusy,
                 showChevron: true,
-                onTap: () => _notAvailableYet('Exporting data'),
+                onTap: _exportData,
               ),
             ]),
             const SizedBox(height: 24),
@@ -275,6 +318,58 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ImportConfirmDialog extends StatelessWidget {
+  const _ImportConfirmDialog({required this.picked});
+
+  final PickedBackup picked;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final backup = picked.contents;
+    final exported = backup.exportedAt?.toLocal();
+    final counts = [
+      '${backup.count('tasks')} tasks',
+      '${backup.count('calendar_events')} events',
+      '${backup.count('alarms')} alarms',
+      '${backup.count('categories')} categories',
+    ].join(' · ');
+
+    return AlertDialog(
+      title: const Text('Replace all data?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Importing ${picked.fileName} replaces everything on this device. '
+            'This cannot be undone.',
+          ),
+          const SizedBox(height: 12),
+          Text(
+            [
+              if (exported != null)
+                'Saved ${exported.day}/${exported.month}/${exported.year}',
+              counts,
+            ].join('\n'),
+            style: TextStyle(fontSize: 13, color: c.mutedForeground),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text('Replace', style: TextStyle(color: c.destructive)),
+        ),
+      ],
     );
   }
 }
