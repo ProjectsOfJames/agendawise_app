@@ -20,6 +20,9 @@ import '../../features/challenges/ui/challenge_screen.dart';
 import '../../features/profile/ui/profile_screen.dart';
 import '../../features/tasks/presentation/task_detail_screen.dart';
 import '../../features/todo/ui/todo_screen.dart';
+import '../../features/voice/ui/voice_confirm_screen.dart';
+import '../../features/voice/ui/voice_fallback_screen.dart';
+import '../../features/voice/ui/voice_listening_screen.dart';
 import '../../shared/widgets/app_shell.dart';
 import '../cloud/activity_actions.dart';
 
@@ -53,6 +56,9 @@ abstract final class AppRoutes {
   static const privacyNotice = '/privacy';
   static const manageAdmins = '/admin/manage';
   static const myActivity = '/activity';
+  static const voice = '/voice';
+  static const voiceConfirm = '/voice/confirm';
+  static const voiceFallback = '/voice/fallback';
 
   /// Admin log viewer, optionally opened with a date range and one action.
   static String adminLogs({DatePreset? preset, ActivityAction? action}) {
@@ -210,6 +216,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.privacyNotice,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const PrivacyNoticeScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.voice,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const VoiceListeningScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.voiceConfirm,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final args = state.extra;
+          return args is VoiceConfirmArgs
+              ? VoiceConfirmScreen(args: args)
+              : const VoiceFallbackScreen();
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.voiceFallback,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final heard = state.extra;
+          return VoiceFallbackScreen(heard: heard is String ? heard : '');
+        },
       ),
       GoRoute(
         path: '/admin/logs',

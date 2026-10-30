@@ -27,6 +27,7 @@ dependencies:
   cloud_firestore: ^7.0.0
   image_picker: ^1.2.4
   share_plus: ^13.3.1
+  speech_to_text: ^7.3.0
 
 dev_dependencies:
   flutter_test:

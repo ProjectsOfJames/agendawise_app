@@ -92,6 +92,35 @@ class PermissionGate {
     );
   }
 
+  /// Microphone access for voice input. Returns true when it is granted.
+  Future<bool> ensureForMicrophone(BuildContext context) async {
+    if (!isAndroidDevice) return false;
+    final status = await Permission.microphone.status;
+    if (status.isGranted) return true;
+    if (!context.mounted) return false;
+    if (status.isPermanentlyDenied) {
+      final proceed = await showPermissionExplanation(
+        context,
+        icon: Icons.mic_off_outlined,
+        title: 'Microphone is off',
+        message: 'Voice input needs the microphone. Turn it on in the app '
+            'settings, then try again.',
+        acceptLabel: 'Open settings',
+      );
+      if (proceed) await openAppSettings();
+      return false;
+    }
+    final proceed = await showPermissionExplanation(
+      context,
+      icon: Icons.mic_none_rounded,
+      title: 'Allow the microphone',
+      message: 'AgendaWise listens only while the voice screen is open, and '
+          'turns what you say into a task, alarm or event for you to check.',
+    );
+    if (!proceed) return false;
+    return (await Permission.microphone.request()).isGranted;
+  }
+
   /// Shown once, after an alarm is saved, if the app is still subject to
   /// battery optimisation.
   Future<void> offerBatteryExemption(BuildContext context) async {
