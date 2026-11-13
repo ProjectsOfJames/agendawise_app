@@ -67,3 +67,6 @@ On first use the app asks for exact alarms, notifications and the microphone, ea
 - Everything except creating an account and signing in works without internet.
 - Backing up and restoring data (a JSON file) requires being signed in.
 - This is an academic project (BSc IT, 3rd year).
+
+# Sidenote
+This is not the original repo for this project, the original was created on 11 August 2026. Reasoning for this is there were many configuration conflicts due to incorrect initial project creation.
